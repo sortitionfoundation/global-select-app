@@ -18,6 +18,9 @@ google_out_file_name = "/Users/bsh/brett/sortition/foundation/projects-events/St
 # Read in the database from
 #
 # NEW: https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-adjusted-to-2015-unwpp-country-totals-rev11/data-download
+# or
+#   https://ghsl.jrc.ec.europa.eu/ (Paul's suggestion)
+#
 
 global_pop_den_file = open( global_pop_den_file_name, 'r' )
 line1 = global_pop_den_file.readline()
