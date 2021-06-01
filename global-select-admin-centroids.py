@@ -17,7 +17,7 @@ global_pop_admin_centroids_files = [
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_south.csv",
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_west.csv"
 		]
-un_region_country_count_file = global_pop_output_file_root + "country-code-UN Region-max.csv"
+un_region_country_count_file = global_pop_output_file_root + "country-code-UN-Region-max.csv"
 
 # TESTing area (oceania):
 #global_pop_admin_centroids_file_root = "/Users/bsh/brett/sortition/foundation/projects-events/Stratification-Services/Global CA/data-points/GPWv4/gpw-v4-admin-unit-center-points-population-estimates-rev11_oceania_csv/"
@@ -26,12 +26,12 @@ un_region_country_count_file = global_pop_output_file_root + "country-code-UN Re
 # Testing non-US only
 #total_pop = 7424623670
 total_pop = 7758177449
-num_points = 100
+num_points = 110
 
 
 
 # output file:
-google_out_file_name = global_pop_output_file_root + "100-person-oceania-sample-data-points-google.csv"
+google_out_file_name = global_pop_output_file_root + "gobal-ca-people-points.csv"
 
 # Read in the database from
 #
@@ -40,64 +40,84 @@ google_out_file_name = global_pop_output_file_root + "100-person-oceania-sample-
 # or could use pop density
 # or could use: https://ghsl.jrc.ec.europa.eu/ghs_pop2019.php (but this is based on GPWv4)
 
-# this just counts the total pop - did this once then put in line below
+# this just counts the total pop - did this once then put in line above
+
 '''
 total_pop = 0
+iso_country_dict = {} #set()
 for file_name in global_pop_admin_centroids_files:
 	print("Reading in: " + file_name)
 	file_handle = open(global_pop_admin_centroids_file_root + file_name, 'r')
 	file_reader = csv.DictReader(file_handle)
 	for row in file_reader:
-		total_pop += int(row[ "UN_2020_E" ])
+		pop_row = int(row[ "UN_2020_E" ])
+		pop_iso = row["ISOALPHA"]
+		total_pop += pop_row
+		if pop_iso in iso_country_dict:
+			iso_country_dict[pop_iso] += pop_row
+		else:
+			iso_country_dict[pop_iso] = pop_row
 	file_handle.close()
-	print("Total (file) pop = {}".format(total_pop))
+out_file_google = open(google_out_file_name, "w")
+for k, val in iso_country_dict.items():
+	out_file_google.write( k + ',' + str(val) + '\n' )
+out_file_google.close()
+print("Total (file) pop = {}".format(total_pop))
 '''
-
-
-
 
 
 # from https://en.wikipedia.org/wiki/United_Nations_Regional_Groups
 class un_region():
-	def __init__(self, region_name, max_count):
+	def __init__(self, region_name ):
 		self.region_name = region_name
-		self.max_region_count = max_count
+		self.region_pop_percent = 0.0 # actually num_points fraction / 100
 		self.region_count = 0
 		self.countries = {}
-		#self.people = []
 		
-	def add_country_to_region(self, country_code, country_max):
-		self.countries[ country_code ] = { "country_max" : country_max, "country_people" : [] }
+	def add_country_to_region(self, country_code, parent_country_code, country_pc):
+		if country_code in self.countries:
+			print("ERROR: Two rows with same country code: {}".format(country_code))
+		if parent_country_code != country_code:
+			# need to add percent to parent...
+			self.countries[ parent_country_code ][ "country_pc" ] += country_pc
+		self.countries[ country_code ] = { "parent_country_code" : parent_country_code, "country_pc" : country_pc, "country_people" : [] }
+		self.region_pop_percent += country_pc
 	
 	def add_person_to_region(self, person):
 		self.region_count += 1
-		#self.people.append( person )
-		#self.countries[ person["country_iso"] ][ "country_count" ] += 1
+		# check if this "country" has a parent, if so make the country be the parent
+		parent_country = self.countries[ person["country_iso"] ]["parent_country_code"]
+		if person["country_iso"] != parent_country:
+			print("Found parent country of {} and set to {}.".format(person["country_iso"], parent_country))
+			person["country_iso"] = parent_country
 		self.countries[ person["country_iso"] ][ "country_people" ].append( person )
 		
 	def write_country_summary(self, out_file_google):
 		for country_key, country_vals in self.countries.items():
 			country_count = len(country_vals[ "country_people" ])
+			country_max = math.ceil(country_vals["country_pc"])
 			if country_count != 0:
-				out_file_google.write( country_key + "," + str(country_vals[ "country_max" ]) + "," + str(country_count) + "\n" )
-		return self.region_name + "," + str(self.max_region_count) + "," + str(self.region_count) + "\n"
+				out_file_google.write( country_key + "," + str(country_max) + "," + str(country_count) + "\n" )
+		max_region_count = math.ceil(self.region_pop_percent)
+		return self.region_name + "," + str(max_region_count) + "," + str(self.region_count) + "\n"
 		
 	def write_people(self):
-		file_output = ''
+		people_array = []
 		for country_vals in self.countries.values():
 			for person in country_vals["country_people"]:
-				file_output += ",".join(str(x) for x in person.values()) + "\n"
-		return file_output
+				people_array.append( ",".join(str(x) for x in person.values()) + "\n" )
+		return people_array
 		
 	def delete_above_max(self):
 		# first check country maxs
 		num_deleted = 0
 		for country_key, country_vals in self.countries.items():
 			country_count = len(country_vals[ "country_people" ])
-			if country_count > country_vals[ "country_max" ]:
+			country_max = math.ceil(country_vals["country_pc"])
+			if country_count > country_max:
 				#print(country_count)
-				num_to_delete = country_count - country_vals[ "country_max" ]
-				print("country {} above max, delete {}".format(country_key, num_to_delete))
+				num_to_delete = country_count - country_max
+				print("Country {} above max, delete {}".format(country_key, num_to_delete))
 				# delete num_to_delete
 				# chose who to delete
 				to_delete = set(random.sample(range(country_count), num_to_delete))
@@ -105,28 +125,31 @@ class un_region():
 				country_vals[ "country_people" ] = [x for i,x in enumerate(country_vals[ "country_people" ]) if not i in to_delete]
 				num_deleted += num_to_delete
 				self.region_count -= num_to_delete
-				#print(len(country_vals[ "country_people" ]))
-			#region_count += len(country_vals[ "country_people" ])
-		if self.region_count > self.max_region_count:
-			#print(region_count)
-			num_to_delete = self.region_count - self.max_region_count
-			print("region {} above max, delete {}".format(self.region_name, num_to_delete))
+		max_region_count = math.ceil(self.region_pop_percent)
+		if self.region_count > max_region_count:
+			num_to_delete = self.region_count - max_region_count
+			print("Region {} above max, delete {}".format(self.region_name, num_to_delete))
 			# delete num_to_delete
 			to_delete = set(random.sample(range(self.region_count), num_to_delete))
 			for country_key, country_vals in self.countries.items():
 				orig_len = len(country_vals[ "country_people" ])
 				country_vals[ "country_people" ] = [x for i,x in enumerate(country_vals[ "country_people" ]) if not i in to_delete]
+				# if the numbers to delete were 2, 7, 11 and the first country had 3 people then we delete person 2,
+				# then shift the numbers down 3 to: -1, 4, 8 and look in the next country etc
 				to_delete = [x - orig_len for x in to_delete]
-				#new_region_count += len(country_vals[ "country_people" ])
-			#print(new_region_count)
 			num_deleted += num_to_delete
 			self.region_count -= num_to_delete
 		return num_deleted
 	
 	def replacement( self, person ):
-		if self.region_count < self.max_region_count:
-			country = self.countries[ person["country_iso"] ]
-			if len(country[ "country_people" ]) < country[ "country_max" ]:
+		max_region_count = math.ceil(self.region_pop_percent)
+		if self.region_count < max_region_count:
+			country_code = self.countries[ person["country_iso"] ][ "parent_country_code" ]
+			if country_code != person["country_iso"]: # there is a parent country
+				person["country_iso"] = country_code
+			country = self.countries[ country_code ]
+			country_max = math.ceil(country[ "country_pc" ])
+			if len(country[ "country_people" ]) < country_max:
 				country[ "country_people" ].append(person)
 				self.region_count += 1
 				return 1
@@ -144,34 +167,33 @@ class un_region():
 			if x >= total_country_count and x < total_country_count + country_count:
 				return country_vals[ "country_people" ][x - total_country_count]
 			total_country_count += country_count
-		print("error - got to country list end {}".format(x))
+		print("Error - got to country list end {}".format(x))
 		
 		
 class ca_people():
 	name_fields = ["NAME1", "NAME2", "NAME3", "NAME4", "NAME5", "NAME6"]
-	# calculated this once from above
-	total_pop = 0 #7758177449
-	#total_pop = 42131508
-	#num_points = 0 #100
+	total_pop = 0
 
 	def __init__(self, total_pop, num_points):
 		ca_people.total_pop = total_pop
 		self.num_points = num_points
 		self.regions = {
-			"Africa Group" : un_region("Africa Group", 16),
-			"Asia and the Pacific Group" : un_region("Asia and the Pacific Group", 59),
-			"Eastern European Group" : un_region("Eastern European Group", 5),
-			"Latin American and Caribbean Group" : un_region("Latin American and Caribbean Group", 9),
-			"Western European and Others Group" : un_region("Western European and Others Group", 12)  }
+			"Africa Group" : un_region("Africa Group" ),
+			"Asia and the Pacific Group" : un_region("Asia and the Pacific Group" ),
+			"Eastern European Group" : un_region("Eastern European Group" ),
+			"Latin American and Caribbean Group" : un_region("Latin American and Caribbean Group" ),
+			"Western European and Others Group" : un_region("Western European and Others Group" )  }
 		print("Total pop = {}".format(ca_people.total_pop))
-		# first value is max, second is count
-		#un_region_count = {"Africa Group" : [16, 0] "Asia and the Pacific Group" : [59, 0], "Eastern European Group" : [5, 0], "Latin American and Caribbean Group" : [9, 0], "Western European and Others Group" : [12, 0]}
 		# read in region and country count
 		un_region_file_handle = open(un_region_country_count_file, 'r')
 		un_region_file_reader = csv.DictReader(un_region_file_handle)
 		self.country_region = {}
 		for row in un_region_file_reader:
-			self.regions[ row["un_region"] ].add_country_to_region( row["country_code"], int(row["country_max"]) )
+			#country_max = math.ceil(float(row["country_pop_percent"]))
+			country_percent = float(row["country_pop_percent"])
+			#if country_max == 0: #check if rounding errors have crept in
+			#	country_max = 1
+			self.regions[ row["un_region"] ].add_country_to_region( row["country_code"], row["parent_country_code"], num_points*country_percent/100.0 )
 			self.country_region[row["country_code"]] = row["un_region"]
 
 		# Select num_points points - population/density weighted?
@@ -213,32 +235,22 @@ class ca_people():
 			lon2 = (lon1-math.asin(math.sin(tc)*math.sin(rrr)/math.cos(lat2))+math.pi)%(2*math.pi) - math.pi
 			rand_lat_deg = math.degrees(lat2)
 			rand_lon_deg = math.degrees(lon2)
-			#distance = math.acos(math.sin(lat1)*math.sin(lat2)+math.cos(lat1)*math.cos(lat2)*math.cos(lon1-lon2))
-			#print(row["TOTAL_A_KM"], orig_radius, distance)
-			#print(row["CENTROID_Y"], row["CENTROID_X"],rand_lat_deg,rand_lon_deg) 
 			# add to counts for country and region
 			if place_country_iso in self.country_region.keys():
 				person_region = self.country_region[place_country_iso]
 			else:
-				if place_country_iso == "MNP": # Northern Mariana Islands (US)
-					place_country_iso = "USA"
-					person_region = "Western European and Others Group"
-				elif place_country_iso == "HKG" or place_country_iso == "TWN": # China/claimed by China
-					place_country_iso = "CHN"
-					person_region = "Asia and the Pacific Group"
-				else:
-					print("Error {} not in country-region map.".format(place_country_iso))
-					person_region = "Not in map"
+				print("Error {} not in country-region map. ADDED TO 'Asia and the Pacific Group'".format(place_country_iso))
+				person_region = "Asia and the Pacific Group"
+				self.regions[ person_region ].add_country_to_region( place_country_iso, place_country_iso, 1 )
+				self.country_region[place_country_iso] = person_region
 			person = { "latitude" : rand_lat_deg,
 					"longitude" : rand_lon_deg,
 					"name" : place_name,
 					"country" : place_country,
 					"country_iso" : place_country_iso,
 					"un_region" : person_region }
-			if person_region != "Not in map":
-				self.regions[ person_region ].add_person_to_region( person )
+			self.regions[ person_region ].add_person_to_region( person )
 			self.count_selected_people += 1
-			#self.selected_people.append( person )
 
 	'''	
 	def selected_people_min_dist(self):
@@ -264,13 +276,14 @@ class ca_people():
 		
 	def selected_people_print(self):
 		# output them for google map input
+		# let's randomise the order here!   
 		out_file_google = open(google_out_file_name, "w")
-		#out_file_google.write(",".join(str(x) for x in self.selected_people[0].keys()) + "\n") # Google maps needs this...
-		#for person in self.selected_people:
-		#	out_file_google.write(",".join(str(x) for x in person.values()) + "\n")
 		file_output = "latitude, longitude, name, country, country_iso, un_region\n"
+		people_array = []
 		for region in self.regions.values():
-			file_output += region.write_people()
+			people_array += region.write_people()
+		random.shuffle(people_array)
+		file_output += "".join(people_array)
 		out_file_google.write( file_output )
 		#out_file_google.write("Average minimum distance between points = {}\n".format(self.average_dist))
 		# print country and region counts as well...
@@ -285,10 +298,9 @@ class ca_people():
 		total_region_count = 0
 		for region in self.regions.values():
 			if x >= total_region_count and x < total_region_count + region.region_count:
-				#print(region.region_name, x, total_region_count, total_region_count + region.region_count, x - total_region_count )
 				return region.get_person( x - total_region_count )
 			total_region_count += region.region_count
-		print("error - got to region list end {}".format(x))
+		print("Error - got to region list end {}".format(x))
 	
 	def replace_above_max(self, gca_backups):
 		num_deleted = 0
@@ -299,21 +311,20 @@ class ca_people():
 		self.count_selected_people -= num_deleted
 		# then replace these deleted from the pool
 		#replacements = random.sample(range(ca_people.num_points - num_deleted), num_deleted)
-		replacements = random.sample(range(gca_backups.num_points), int(gca_backups.num_points/2))
-		#print(replacements)
+		replacements = list(range(gca_backups.num_points))
+		random.shuffle(replacements)
 		success_replace = 0
 		for x in replacements:
 			person = gca_backups.get_person(x)
-			#print(person["un_region"])
 			success_replace += self.regions[ person["un_region"] ].replacement( person )
 			if success_replace == num_deleted:
 				break;
-		print("successfully replaced {} people".format(success_replace))
+		print("Successfully replaced {} people".format(success_replace))
 			
 
 gca_people = ca_people(total_pop, num_points)
 print("And backup people...")
-gca_backups = ca_people(total_pop, num_points)
+gca_backups = ca_people(total_pop, 2*num_points)
 
 pop_count = 0
 for file_name in global_pop_admin_centroids_files:
@@ -328,8 +339,6 @@ for file_name in global_pop_admin_centroids_files:
 		pop_count += pop_row
 	file_handle.close()
 print("Total pop (post selection) = {}".format(pop_count))
-
-# work out how many people in each UN region
 
 # calculate the distance to the closet other point for every point, and sum these minimum distances
 #gca_people.selected_people_min_dist()
