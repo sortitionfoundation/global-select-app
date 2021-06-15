@@ -1,0 +1,15 @@
+{
+    "name": "global-select-app",
+    "version": "1.0.0",
+    "description": "A node app than runs a Python script",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "me@ishimwefelix.com",
+    "license": "ISC",
+    "dependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.17.1"
+    }
+}
