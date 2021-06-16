@@ -13,7 +13,7 @@ To make installation ypu will have to:
 
 - Download the  global population datasets [here](https://sedac.ciesin.columbia.edu/data/set/gpw-v4-admin-unit-center-points-population-estimates-rev11/data-download) (You may have to create an account with them)
 
-- Downlaod the UN country file [here](https://api.map.globalassembly.org/resources) 
+- Downlaod the UN country file [here](https://api.map.globalassembly.org/resources/country-code-UN-Region-max.csv) 
 
 - After the installation you have to change the root (global_pop_admin_centroids_file_root) and (global_pop_output_file_root) to reflect where you have your global population datasets
 
