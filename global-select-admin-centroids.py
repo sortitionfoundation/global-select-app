@@ -8,8 +8,8 @@ import csv, random, math
 # Settings/input
 
 # must download data and put it here of course...
-global_pop_admin_centroids_file_root = "/Users/bsh/brett/sortition/foundation/projects-events/Stratification-Services/Global CA/data-points/GPWv4/gpw-v4-admin-unit-center-points-population-estimates-rev11_global_csv/"
-global_pop_output_file_root = "/Users/bsh/brett/sortition/foundation/projects-events/Stratification-Services/Global CA/data-points/"
+global_pop_admin_centroids_file_root = "/home/developer/projects/global-select-app/docs/"
+global_pop_output_file_root = "/home/developer/projects/global-select-app/docs/"
 global_pop_admin_centroids_files = [
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_global.csv",
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_midwest.csv",
