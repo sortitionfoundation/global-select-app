@@ -57,7 +57,7 @@ app.get('/request', (req, res) => {
 
 // Endpoint to read the locations of the selected people from .txt file
 app.get('/read', (req, res) => {
-    fs.readFile('/home/developer/projects/ga-people-api/results.txt','utf8',(err,data)=>{
+    fs.readFile('/home/developer/projects/global-select-app/results.txt','utf8',(err,data)=>{
         var nameArr = data.split('___');
         var new_array=[]
         for (let i = 0; i < nameArr.length-1; i++) {
