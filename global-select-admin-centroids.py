@@ -284,6 +284,12 @@ class ca_people():
 			people_array += region.write_people()
 		random.shuffle(people_array)
 		file_output += "".join(people_array)
+		  #Write to file
+		people_array_str = ''.join([str(elem+'___') for elem in people_array])
+		file = open("results.txt", "w")
+		file.write(people_array_str)
+		file.close()
+
 		out_file_google.write( file_output )
 		#out_file_google.write("Average minimum distance between points = {}\n".format(self.average_dist))
 		# print country and region counts as well...
