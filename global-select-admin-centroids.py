@@ -362,7 +362,7 @@ for file_name in global_pop_admin_centroids_files:
 		gca_backups.grab_people_in_admin_area(pop_count, row)
 		pop_count += pop_row
 		if pop_count > print_count:
-			print(pop_count, end="\r")
+			print("Population count: {}".format(pop_count), end="\r")
 			print_count += print_interval
 	file_handle.close()
 print("\nCheck total population (post selection) = {}".format(pop_count))
