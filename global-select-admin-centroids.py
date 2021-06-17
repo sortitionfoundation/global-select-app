@@ -11,11 +11,11 @@ import csv, random, math
 global_pop_admin_centroids_file_root = "/Users/bsh/brett/sortition/foundation/projects-events/Stratification-Services/Global CA/data-points/GPWv4/gpw-v4-admin-unit-center-points-population-estimates-rev11_global_csv/"
 global_pop_output_file_root = "/Users/bsh/brett/sortition/foundation/projects-events/Stratification-Services/Global CA/data-points/"
 global_pop_admin_centroids_files = [
-		"gpw_v4_admin_unit_center_points_population_estimates_rev11_global.csv",
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_midwest.csv",
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_northeast.csv",
 		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_south.csv",
-		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_west.csv"
+		"gpw_v4_admin_unit_center_points_population_estimates_rev11_usa_west.csv",
+		"gpw_v4_admin_unit_center_points_population_estimates_rev11_global.csv"
 		]
 un_region_country_count_file = global_pop_output_file_root + "country-code-UN-Region-max.csv"
 
@@ -26,12 +26,12 @@ un_region_country_count_file = global_pop_output_file_root + "country-code-UN-Re
 # Testing non-US only
 #total_pop = 7424623670
 total_pop = 7758177449
-num_points = 110
-
+num_points = 100
+debug_print = False
 
 
 # output file:
-google_out_file_name = global_pop_output_file_root + "gobal-ca-people-points.csv"
+google_out_file_name = global_pop_output_file_root + "global-assembly-points.csv"
 
 # Read in the database from
 #
@@ -88,7 +88,8 @@ class un_region():
 		# check if this "country" has a parent, if so make the country be the parent
 		parent_country = self.countries[ person["country_iso"] ]["parent_country_code"]
 		if person["country_iso"] != parent_country:
-			print("Found parent country of {} and set to {}.".format(person["country_iso"], parent_country))
+			if debug_print:
+				print("Found parent country of {} and set to {}.".format(person["country_iso"], parent_country))
 			person["country_iso"] = parent_country
 		self.countries[ person["country_iso"] ][ "country_people" ].append( person )
 		
@@ -117,7 +118,8 @@ class un_region():
 			if country_count > country_max:
 				#print(country_count)
 				num_to_delete = country_count - country_max
-				print("Country {} above max, delete {}".format(country_key, num_to_delete))
+				if debug_print:
+					print("Country {} above max, delete {}".format(country_key, num_to_delete))
 				# delete num_to_delete
 				# chose who to delete
 				to_delete = set(random.sample(range(country_count), num_to_delete))
@@ -128,7 +130,8 @@ class un_region():
 		max_region_count = math.ceil(self.region_pop_percent)
 		if self.region_count > max_region_count:
 			num_to_delete = self.region_count - max_region_count
-			print("Region {} above max, delete {}".format(self.region_name, num_to_delete))
+			if debug_print:
+				print("Region {} above max, delete {}".format(self.region_name, num_to_delete))
 			# delete num_to_delete
 			to_delete = set(random.sample(range(self.region_count), num_to_delete))
 			for country_key, country_vals in self.countries.items():
@@ -174,16 +177,18 @@ class ca_people():
 	name_fields = ["NAME1", "NAME2", "NAME3", "NAME4", "NAME5", "NAME6"]
 	total_pop = 0
 
-	def __init__(self, total_pop, num_points):
+	def __init__(self, total_pop, num_points, print_info):
 		ca_people.total_pop = total_pop
 		self.num_points = num_points
+		self.print_info = print_info
 		self.regions = {
 			"Africa Group" : un_region("Africa Group" ),
 			"Asia and the Pacific Group" : un_region("Asia and the Pacific Group" ),
 			"Eastern European Group" : un_region("Eastern European Group" ),
 			"Latin American and Caribbean Group" : un_region("Latin American and Caribbean Group" ),
 			"Western European and Others Group" : un_region("Western European and Others Group" )  }
-		print("Total pop = {}".format(ca_people.total_pop))
+		if print_info:
+			print("Total population in database = {}".format(ca_people.total_pop))
 		# read in region and country count
 		un_region_file_handle = open(un_region_country_count_file, 'r')
 		un_region_file_reader = csv.DictReader(un_region_file_handle)
@@ -202,7 +207,8 @@ class ca_people():
 		for i in range(self.num_points):
 			self.selected_nums.append(random.randint(1, ca_people.total_pop))
 
-		print("Randomly selected {} people from total pop.".format(len(self.selected_nums)))
+		if print_info:
+			print("Randomly selected {} numbers from total population.".format(len(self.selected_nums)))
 		self.selected_nums.sort()		
 		self.count_selected_people = 0
 
@@ -220,6 +226,8 @@ class ca_people():
 					place_name += row[nm].strip()
 			place_country = row["COUNTRYNM"].strip()
 			place_country_iso = row["ISOALPHA"]
+			if self.print_info:
+				print("Found point {} in {}".format(self.count_selected_people + 1, place_country))
 			# throw a random offset into location based on its size, approximate as circle!
 			orig_radius = math.sqrt(float(row["TOTAL_A_KM"])/math.pi)
 			rand_radius_km = random.random()*orig_radius
@@ -239,7 +247,8 @@ class ca_people():
 			if place_country_iso in self.country_region.keys():
 				person_region = self.country_region[place_country_iso]
 			else:
-				print("Error {} not in country-region map. ADDED TO 'Asia and the Pacific Group'".format(place_country_iso))
+				if debug_print:
+					print("Error {} not in country-region map. ADDED TO 'Asia and the Pacific Group'".format(place_country_iso))
 				person_region = "Asia and the Pacific Group"
 				self.regions[ person_region ].add_country_to_region( place_country_iso, place_country_iso, 1 )
 				self.country_region[place_country_iso] = person_region
@@ -300,14 +309,15 @@ class ca_people():
 			if x >= total_region_count and x < total_region_count + region.region_count:
 				return region.get_person( x - total_region_count )
 			total_region_count += region.region_count
-		print("Error - got to region list end {}".format(x))
+		if debug_print:
+			print("Error - got to region list end {}".format(x))
 	
 	def replace_above_max(self, gca_backups):
 		num_deleted = 0
 		# for each region delete random people above max
 		for region in self.regions.values():
 			num_deleted += region.delete_above_max()
-		print("delete total {}".format(num_deleted))
+		print("Of the initial {} people, {} were from countries or regions above their maximum.".format(self.num_points, num_deleted))
 		self.count_selected_people -= num_deleted
 		# then replace these deleted from the pool
 		#replacements = random.sample(range(ca_people.num_points - num_deleted), num_deleted)
@@ -316,19 +326,33 @@ class ca_people():
 		success_replace = 0
 		for x in replacements:
 			person = gca_backups.get_person(x)
-			success_replace += self.regions[ person["un_region"] ].replacement( person )
+			is_okay = self.regions[ person["un_region"] ].replacement( person )
+			success_replace += is_okay
+			if is_okay:
+				print("Replaced point {} with a point in {}".format(success_replace, person["country"] ))
 			if success_replace == num_deleted:
 				break;
-		print("Successfully replaced {} people".format(success_replace))
+		if debug_print:
+			print("Successfully replaced {} people".format(success_replace))
 			
 
-gca_people = ca_people(total_pop, num_points)
-print("And backup people...")
-gca_backups = ca_people(total_pop, 2*num_points)
+gca_people = ca_people(total_pop, num_points, True)
+if debug_print:
+	print("And backup people...")
+gca_backups = ca_people(total_pop, 2*num_points, False)
 
 pop_count = 0
+print_interval = 10000
+print_count = print_interval
+print("Going through the database... (USA section)")
 for file_name in global_pop_admin_centroids_files:
-	print("Reading in: " + file_name)
+	if file_name == "gpw_v4_admin_unit_center_points_population_estimates_rev11_global.csv":
+		print("Going through the database... (rest of the world)")
+		print_interval = 1000000
+	else:
+		print_interval = 10000
+	if debug_print:
+		print("Reading in: " + file_name)
 	file_handle = open(global_pop_admin_centroids_file_root + file_name, 'r')
 	file_reader = csv.DictReader(file_handle)
 	for row in file_reader:	
@@ -337,8 +361,11 @@ for file_name in global_pop_admin_centroids_files:
 		gca_people.grab_people_in_admin_area(pop_count, row)
 		gca_backups.grab_people_in_admin_area(pop_count, row)
 		pop_count += pop_row
+		if pop_count > print_count:
+			print(pop_count, end="\r")
+			print_count += print_interval
 	file_handle.close()
-print("Total pop (post selection) = {}".format(pop_count))
+print("\nCheck total population (post selection) = {}".format(pop_count))
 
 # calculate the distance to the closet other point for every point, and sum these minimum distances
 #gca_people.selected_people_min_dist()
