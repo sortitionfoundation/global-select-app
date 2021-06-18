@@ -26,12 +26,12 @@ un_region_country_count_file = global_pop_output_file_root + "country-code-UN-Re
 # Testing non-US only
 #total_pop = 7424623670
 total_pop = 7758177449
-num_points = 110
+num_points = 100
 
 
 
 # output file:
-google_out_file_name = global_pop_output_file_root + "gobal-ca-people-points.csv"
+google_out_file_name = global_pop_output_file_root + "global-ca-people-points.csv"
 
 # Read in the database from
 #
